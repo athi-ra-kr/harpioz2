@@ -1,0 +1,133 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ lc.title }} — Harpioz</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}?v=2">
+</head>
+<body>
+<div class="room">
+  <div class="room-bar">
+    <div class="room-bar-left">
+      <span class="badge badge-live"><span class="live-dot"></span> Live</span>
+      <span class="room-bar-title">{{ lc.title }}</span>
+    </div>
+    <div class="flex-row">
+      <button class="ctrl" onclick="toggleChat()" title="Chat" style="width:auto;padding:0 12px;border-radius:8px;gap:6px;font-size:13px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;"><path d="M21 11.5a8.5 8.5 0 01-8.5 8.5c-1.4 0-2.7-.3-3.9-.9L3 21l1.9-5.6A8.5 8.5 0 1121 11.5z"/></svg>
+        Chat
+      </button>
+      {% if is_admin %}
+      <a href="{% url 'admin_broadcast' lc.class_id %}" class="ctrl" style="width:auto;padding:0 12px;border-radius:8px;gap:6px;font-size:13px;color:#fff;text-decoration:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Broadcast
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="room-main">
+    <div class="room-video">
+      {% if streaming_enabled and whep_url %}
+        <video id="live-video" autoplay playsinline></video>
+        <div class="room-placeholder" id="waiting-msg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <p>Waiting for instructor to start broadcasting…</p>
+        </div>
+      {% else %}
+        <div class="room-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <p>Streaming not configured on this server.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="chat-panel" id="chat-panel">
+      <div class="chat-head">
+        <span class="chat-head-title">Class Chat</span>
+        <button onclick="toggleChat()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;">×</button>
+      </div>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      {% if lc.chat_enabled %}
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn btn-primary btn-sm" onclick="sendChat()">Send</button>
+      </div>
+      {% else %}
+      <p style="padding:14px;color:var(--text-faint);font-size:13px;">Chat is disabled for this class.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+const CLASS_ID = '{{ lc.class_id }}';
+const WHEP_URL = '{{ whep_url|default:"" }}';
+let lastId = 0;
+let pc = null;
+
+function toggleChat() {
+  document.getElementById('chat-panel').classList.toggle('open');
+}
+
+// Chat polling
+async function pollChat() {
+  try {
+    const r = await fetch(`/class/${CLASS_ID}/chat/?since=${lastId}`);
+    const data = await r.json();
+    const box = document.getElementById('chat-msgs');
+    data.messages.forEach(m => {
+      lastId = Math.max(lastId, m.id);
+      const el = document.createElement('div');
+      el.className = 'chat-msg';
+      el.innerHTML = `<div class="author ${m.is_admin ? 'is-admin' : 'is-student'}">${m.name}<span class="time">${m.time}</span></div><div class="body">${m.text}</div>`;
+      box.appendChild(el);
+    });
+    if (data.messages.length) box.scrollTop = box.scrollHeight;
+  } catch(e) {}
+  setTimeout(pollChat, 3000);
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  const fd = new FormData();
+  fd.append('text', text);
+  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+  await fetch(`/class/${CLASS_ID}/chat/send/`, {method:'POST', body:fd});
+}
+
+// WHEP viewer
+async function startViewing() {
+  if (!WHEP_URL) return;
+  pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  pc.addTransceiver('video', {direction:'recvonly'});
+  pc.addTransceiver('audio', {direction:'recvonly'});
+  pc.ontrack = e => {
+    const vid = document.getElementById('live-video');
+    if (vid) {
+      vid.srcObject = e.streams[0];
+      document.getElementById('waiting-msg').style.display = 'none';
+    }
+  };
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const r = await fetch(WHEP_URL, {method:'POST', headers:{'Content-Type':'application/sdp'}, body: offer.sdp});
+    if (r.ok) {
+      const sdp = await r.text();
+      await pc.setRemoteDescription({type:'answer', sdp});
+    } else {
+      setTimeout(startViewing, 5000);
+    }
+  } catch(e) { setTimeout(startViewing, 5000); }
+}
+
+pollChat();
+{% if streaming_enabled and whep_url %}startViewing();{% endif %}
+</script>
+</body>
+</html>

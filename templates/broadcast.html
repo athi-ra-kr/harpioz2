@@ -1,0 +1,114 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broadcasting — {{ lc.title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}?v=2">
+</head>
+<body>
+<div class="broadcast-room">
+  <div class="room-bar">
+    <div class="room-bar-left">
+      <a href="{% url 'admin_class_detail' lc.class_id %}" class="ctrl" style="width:34px;height:34px;color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+      <span class="room-bar-title">{{ lc.title }}</span>
+    </div>
+    <div id="status-badge" class="broadcast-status">Not broadcasting</div>
+    <a href="{% url 'class_room' lc.class_id %}" style="color:rgba(255,255,255,0.6);font-size:13px;">Preview as viewer →</a>
+  </div>
+
+  <div class="broadcast-main">
+    {% if streaming_enabled %}
+      <video id="preview-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:contain;"></video>
+      <div class="broadcast-controls">
+        <div class="src-toggle">
+          <button class="src-btn active" id="btn-camera" onclick="setSource('camera')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Camera
+          </button>
+          <button class="src-btn" id="btn-screen" onclick="setSource('screen')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Screen
+          </button>
+        </div>
+        <button class="broadcast-go" id="go-btn" onclick="toggleBroadcast()">Start broadcasting</button>
+        <button class="ctrl ctrl-end" onclick="if(confirm('End class?')){endClass()}" title="End class"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+    {% else %}
+      <div class="room-placeholder" style="color:rgba(255,255,255,0.4);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:44px;height:44px;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        <p>Streaming not configured. See deploy/STREAMING.md</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if streaming_enabled %}
+<script>
+const WHIP_URL = '{{ whip_url }}';
+let pc = null, stream = null, source = 'camera', live = false;
+
+async function setSource(s) {
+  source = s;
+  document.getElementById('btn-camera').classList.toggle('active', s==='camera');
+  document.getElementById('btn-screen').classList.toggle('active', s==='screen');
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  await getStream();
+}
+
+async function getStream() {
+  try {
+    stream = source==='camera'
+      ? await navigator.mediaDevices.getUserMedia({video:true,audio:true})
+      : await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
+    document.getElementById('preview-video').srcObject = stream;
+  } catch(e) { alert('Could not access media: '+e.message); }
+}
+
+async function toggleBroadcast() {
+  if (!live) await startBroadcast(); else stopBroadcast();
+}
+
+async function startBroadcast() {
+  if (!stream) await getStream();
+  if (!stream) return;
+  pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  try {
+    const r = await fetch(WHIP_URL, {method:'POST', headers:{'Content-Type':'application/sdp'}, body:offer.sdp});
+    if (!r.ok) { alert('MediaMTX error '+r.status); pc.close(); pc=null; return; }
+    const sdp = await r.text();
+    await pc.setRemoteDescription({type:'answer', sdp});
+    live = true;
+    document.getElementById('go-btn').textContent='Stop broadcasting';
+    document.getElementById('go-btn').classList.add('stop');
+    document.getElementById('status-badge').textContent='🔴 LIVE';
+    document.getElementById('status-badge').classList.add('live');
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+function stopBroadcast() {
+  if (pc) { pc.close(); pc=null; }
+  live=false;
+  document.getElementById('go-btn').textContent='Start broadcasting';
+  document.getElementById('go-btn').classList.remove('stop');
+  document.getElementById('status-badge').textContent='Not broadcasting';
+  document.getElementById('status-badge').classList.remove('live');
+}
+
+async function endClass() {
+  stopBroadcast();
+  const fd = new FormData();
+  fd.append('status','ended');
+  fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
+  await fetch('/admin/class/{{ lc.class_id }}/status/', {method:'POST',body:fd});
+  window.location = '/admin/class/{{ lc.class_id }}/';
+}
+
+getStream();
+</script>
+{% endif %}
+</body>
+</html>

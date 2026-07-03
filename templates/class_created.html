@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Harpioz — Class Created{% endblock %}
+{% block content %}
+<div class="created-page">
+  <div class="created-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+  </div>
+  <h1 style="margin-bottom:8px;">Class created!</h1>
+  <p style="color:var(--text-dim);">Share the link and password with your students. They don't need an account — just click and join.</p>
+
+  <div class="share-box">
+    <div style="margin-bottom:16px;">
+      <div class="share-label">Join link</div>
+      <div class="share-value" id="join-link">{{ join_url }}</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="share-label">Password</div>
+      <div class="share-value mono" id="join-pass">{{ lc.password }}</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="share-label">Class ID</div>
+      <div class="share-value mono" style="font-size:14px;">{{ lc.class_id }}</div>
+    </div>
+    <button class="btn btn-block" onclick="copyAll()">Copy link & password</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    {% if lc.status == 'live' %}
+    <a href="{% url 'admin_broadcast' lc.class_id %}" class="btn btn-primary btn-block">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      Start broadcasting now
+    </a>
+    {% endif %}
+    <a href="{% url 'admin_class_detail' lc.class_id %}" class="btn btn-block">View class details</a>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-ghost btn-block">Back to dashboard</a>
+  </div>
+</div>
+<script>
+function copyAll() {
+  const text = "Join my Harpioz class!\n\nLink: {{ join_url }}\nPassword: {{ lc.password }}";
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy link & password', 2000);
+  });
+}
+</script>
+{% endblock %}

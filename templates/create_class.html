@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Harpioz — New Class{% endblock %}
+{% block content %}
+<div class="create-page">
+  <a href="{% url 'admin_dashboard' %}" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Dashboard
+  </a>
+  <h1 style="margin-bottom:8px;">New Class</h1>
+  <p style="color:var(--text-dim);margin-bottom:28px;">Students join using a link and password — no accounts needed.</p>
+
+  <form method="post" id="create-form">
+    {% csrf_token %}
+    <input type="hidden" name="type" id="type-input" value="scheduled">
+
+    <div class="type-toggle" style="margin-bottom:24px;">
+      <div class="type-option" id="opt-instant" onclick="setType('instant')">
+        <div class="type-icon">⚡</div>
+        <div class="type-title">Instant class</div>
+        <div class="type-desc">Start broadcasting right now</div>
+      </div>
+      <div class="type-option selected" id="opt-scheduled" onclick="setType('scheduled')">
+        <div class="type-icon">📅</div>
+        <div class="type-title">Schedule for later</div>
+        <div class="type-desc">Set a date and time</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Class title</label>
+      <input type="text" name="title" placeholder="e.g. Mathematics — Chapter 5" required>
+    </div>
+
+    <div class="field" id="schedule-field">
+      <label>Scheduled date & time</label>
+      <input type="datetime-local" name="scheduled_at">
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">
+      Create class & get link
+    </button>
+  </form>
+</div>
+<script>
+const url = new URLSearchParams(window.location.search);
+if (url.get('type') === 'instant') setType('instant');
+
+function setType(t) {
+  document.getElementById('type-input').value = t;
+  document.getElementById('opt-instant').classList.toggle('selected', t === 'instant');
+  document.getElementById('opt-scheduled').classList.toggle('selected', t === 'scheduled');
+  document.getElementById('schedule-field').style.display = t === 'instant' ? 'none' : 'block';
+}
+</script>
+{% endblock %}

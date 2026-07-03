@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ lc.title }} — Harpioz{% endblock %}
+{% block content %}
+<div class="detail-page">
+  <a href="{% url 'admin_dashboard' %}" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Dashboard
+  </a>
+
+  <div class="detail-header">
+    <div>
+      <h1 style="margin-bottom:6px;">{{ lc.title }}</h1>
+      <div class="flex-row" style="flex-wrap:wrap;gap:10px;">
+        {% if lc.status == 'live' %}<span class="badge badge-live"><span class="live-dot"></span> Live</span>
+        {% elif lc.status == 'scheduled' %}<span class="badge badge-scheduled">Scheduled</span>
+        {% else %}<span class="badge badge-ended">Ended</span>{% endif %}
+        <span style="font-size:13px;color:var(--text-faint);">ID: <span class="mono">{{ lc.class_id }}</span></span>
+        <span style="font-size:13px;color:var(--text-faint);">Created {{ lc.created_at|date:"M j, Y" }}</span>
+      </div>
+    </div>
+    <div class="flex-row">
+      {% if lc.status == 'live' %}
+        <a href="{% url 'admin_broadcast' lc.class_id %}" class="btn btn-primary btn-sm">Broadcast</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Share box -->
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="font-size:14px;margin-bottom:14px;color:var(--text-dim);">Share with students</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div>
+        <div style="font-size:11px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin-bottom:4px;">Join link</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <code style="font-size:13px;color:var(--text);word-break:break-all;">{{ join_url }}</code>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText('{{ join_url }}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin-bottom:4px;">Password</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:24px;font-weight:700;color:var(--accent);font-family:var(--font-mono);letter-spacing:0.15em;">{{ lc.password }}</span>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText('{{ lc.password }}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-row">
+    <div class="stat-box"><div class="val">{{ participants.count }}</div><div class="lbl">Total joined</div></div>
+    {% if lc.scheduled_at %}<div class="stat-box"><div class="val" style="font-size:16px;">{{ lc.scheduled_at|date:"M j" }}</div><div class="lbl">Scheduled</div></div>{% endif %}
+  </div>
+
+  <!-- Status change -->
+  <div class="flex-row" style="margin-bottom:24px;flex-wrap:wrap;">
+    {% if lc.status != 'live' %}
+    <form method="post" action="{% url 'admin_class_status' lc.class_id %}" style="display:inline;">
+      {% csrf_token %}<input type="hidden" name="status" value="live">
+      <button type="submit" class="btn btn-primary btn-sm">Mark as Live</button>
+    </form>
+    {% endif %}
+    {% if lc.status != 'ended' %}
+    <form method="post" action="{% url 'admin_class_status' lc.class_id %}" style="display:inline;">
+      {% csrf_token %}<input type="hidden" name="status" value="ended">
+      <button type="submit" class="btn btn-sm">End class</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{% url 'admin_delete_class' lc.class_id %}" style="display:inline;" onsubmit="return confirm('Delete this class?');">
+      {% csrf_token %}<button type="submit" class="btn btn-danger btn-sm">Delete class</button>
+    </form>
+  </div>
+
+  <!-- Participants -->
+  <h2 style="font-size:16px;margin-bottom:14px;">Participants ({{ participants.count }})</h2>
+  {% if participants %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for p in participants %}
+        <tr>
+          <td>{{ p.name }}</td>
+          <td>{{ p.email }}</td>
+          <td>{{ p.mobile }}</td>
+          <td>{{ p.joined_at|date:"M j, Y g:i A" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No students have joined yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Harpioz — Dashboard{% endblock %}
+{% block content %}
+<div class="dashboard">
+  <div class="dashboard-hero">
+    <h1>Welcome to <span style="color:var(--accent);">Harpioz</span></h1>
+    <p>Create a class and share the link with your students</p>
+    <div class="dashboard-actions">
+      <a href="{% url 'create_class' %}?type=instant" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Start instant class
+      </a>
+      <a href="{% url 'create_class' %}" class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+        Schedule for later
+      </a>
+    </div>
+  </div>
+
+  {% if classes %}
+  <div class="class-list">
+    <div class="class-list-header">
+      <h2 style="font-size:16px;">Your classes</h2>
+    </div>
+    {% for lc in classes %}
+    <div class="class-item">
+      <div class="class-item-info">
+        <div class="title">{{ lc.title }}</div>
+        <div class="meta">
+          <span class="mono" style="color:var(--accent);">{{ lc.class_id }}</span>
+          {% if lc.status == 'live' %}<span class="badge badge-live"><span class="live-dot"></span> Live</span>
+          {% elif lc.status == 'scheduled' %}<span class="badge badge-scheduled">Scheduled</span>
+          {% else %}<span class="badge badge-ended">Ended</span>{% endif %}
+          <span>{{ lc.participants.count }} joined</span>
+          <span>{{ lc.created_at|date:"M j, Y" }}</span>
+        </div>
+      </div>
+      <div class="class-item-actions">
+        {% if lc.status == 'live' %}
+          <a href="{% url 'admin_broadcast' lc.class_id %}" class="btn btn-primary btn-sm">Go live</a>
+        {% endif %}
+        <a href="{% url 'admin_class_detail' lc.class_id %}" class="btn btn-sm">Manage</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;margin-bottom:10px;opacity:0.3;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+    <p>No classes yet. Create your first class above.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
