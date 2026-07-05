@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Settings — Harpioz{% endblock %}
+{% block content %}
+<div class="create-wrap" style="max-width:640px;">
+  <a href="{% url 'admin_dashboard' %}" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Dashboard
+  </a>
+  <h1 style="margin-bottom:6px;">Site Settings</h1>
+  <p style="color:var(--text-dim);font-size:14px;margin-bottom:24px;">Customise your Harpioz platform appearance and legal pages.</p>
+
+  {% if saved %}
+  <div style="background:var(--success-bg);border:1px solid var(--success);border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:13px;color:var(--success);">
+    ✓ Settings saved successfully.
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Branding -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-label">Branding</div>
+
+      <div class="field">
+        <label>Site title</label>
+        <input type="text" name="site_title" value="{{ s.site_title }}" placeholder="Harpioz">
+        <p class="help-text">Shown in the browser tab and header.</p>
+      </div>
+
+      <div class="field">
+        <label>Site description</label>
+        <input type="text" name="site_description" value="{{ s.site_description }}" placeholder="Private live education platform">
+        <p class="help-text">Used as the meta description for SEO.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="field">
+          <label>Logo image</label>
+          <input type="file" name="logo" accept="image/*">
+          {% if s.logo %}
+            <div style="margin-top:8px;"><img src="{{ s.logo.url }}" alt="Current logo" style="height:36px;width:auto;border-radius:6px;border:1px solid var(--border);padding:4px;background:var(--surface-2);"></div>
+            <p class="help-text">Current logo shown above. Upload to replace.</p>
+          {% else %}
+            <p class="help-text">PNG or SVG recommended. Shown in the header.</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label>Favicon</label>
+          <input type="file" name="favicon" accept="image/*">
+          {% if s.favicon %}
+            <div style="margin-top:8px;"><img src="{{ s.favicon.url }}" alt="Current favicon" style="height:32px;width:32px;border-radius:4px;border:1px solid var(--border);padding:3px;background:var(--surface-2);"></div>
+            <p class="help-text">Current favicon. Upload to replace.</p>
+          {% else %}
+            <p class="help-text">ICO or PNG, 32×32px. Browser tab icon.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Legal pages -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-label">Legal pages</div>
+      <p style="font-size:13px;color:var(--text-faint);margin-bottom:16px;">These are shown at <code style="font-size:12px;">/privacy/</code> and <code style="font-size:12px;">/terms/</code> — linked in the footer.</p>
+
+      <div class="field">
+        <label>Privacy Policy</label>
+        <textarea name="privacy_policy" rows="8" placeholder="Enter your privacy policy text here...&#10;&#10;You can use plain text or basic HTML.">{{ s.privacy_policy }}</textarea>
+      </div>
+
+      <div class="field">
+        <label>Terms &amp; Conditions</label>
+        <textarea name="terms" rows="8" placeholder="Enter your terms and conditions here...&#10;&#10;You can use plain text or basic HTML.">{{ s.terms }}</textarea>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block">Save settings</button>
+  </form>
+</div>
+{% endblock %}
