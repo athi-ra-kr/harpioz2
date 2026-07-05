@@ -1,0 +1,51 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} — {% if site_settings %}{{ site_settings.site_title }}{% else %}Harpioz{% endif %}</title>
+  {% if site_settings and site_settings.favicon %}
+  <link rel="icon" type="image/x-icon" href="{{ site_settings.favicon.url }}">
+  {% endif %}
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}?v=6">
+</head>
+<body>
+<div class="gradient-bar"></div>
+<header class="header">
+  <a href="/" class="logo">
+    {% if site_settings and site_settings.logo %}
+      <img src="{{ site_settings.logo.url }}" alt="Logo" style="height:28px;width:auto;border-radius:5px;">
+    {% else %}
+      <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 4 2 10l10 6 10-6z"/><path d="M6 12.5V18c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5"/></svg></span>
+    {% endif %}
+    <span class="logo-text">{% if site_settings %}{{ site_settings.site_title }}{% else %}Harp<span>ioz</span>{% endif %}</span>
+  </a>
+</header>
+
+<div style="max-width:720px;margin:0 auto;padding:32px 20px 60px;">
+  <a href="/" class="back-link" style="margin-bottom:20px;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back
+  </a>
+  <h1 style="font-size:clamp(22px,4vw,32px);margin-bottom:24px;">{{ title }}</h1>
+  {% if content %}
+    <div style="color:var(--text-dim);line-height:1.75;font-size:15px;">{{ content|linebreaks }}</div>
+  {% else %}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;color:var(--text-faint);">
+      <p>This page hasn't been set up yet.</p>
+      <p style="font-size:13px;">Admin can add content in <a href="/admin/settings/">Settings</a>.</p>
+    </div>
+  {% endif %}
+</div>
+
+<footer class="gradient-footer">
+  <span class="logo-text" style="font-size:13px;">{% if site_settings %}{{ site_settings.site_title }}{% else %}Harp<span style="color:#f5a623;">ioz</span>{% endif %}</span>
+  <div class="footer-links">
+    <a href="/privacy/">Privacy Policy</a>
+    <a href="/terms/">Terms &amp; Conditions</a>
+  </div>
+  <span style="font-size:11.5px;color:var(--text-faint);">© 2026 Harpioz · All rights reserved</span>
+</footer>
+</body>
+</html>

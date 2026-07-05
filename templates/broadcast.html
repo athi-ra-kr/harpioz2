@@ -1,0 +1,212 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Broadcasting — {{ lc.title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}?v=5">
+</head>
+<body>
+<div class="room-shell">
+
+  <!-- Top bar -->
+  <div class="room-topbar">
+    <div class="room-topbar-left">
+      <a href="{% url 'admin_class_detail' lc.class_id %}" class="room-back" title="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </a>
+      <span class="room-topbar-title">{{ lc.title }}</span>
+    </div>
+    <div class="room-topbar-right">
+      <div id="status-badge" class="broadcast-status-badge">Not broadcasting</div>
+      <a href="{% url 'class_room' lc.class_id %}" class="room-topbar-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span style="display:none;" id="viewer-label">Viewer</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Video area -->
+  <div class="room-video-area">
+    {% if streaming_enabled %}
+      <video id="preview-video" autoplay playsinline muted></video>
+      <div id="cam-placeholder" class="room-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        <p style="font-size:14px;">Choose camera or screen share below, then start broadcasting.</p>
+      </div>
+    {% else %}
+      <div class="room-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        <p>Streaming not configured on this server.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Bottom controls -->
+  {% if streaming_enabled %}
+  <div class="room-controls">
+    <!-- Source toggle -->
+    <div class="src-toggle">
+      <button class="src-btn active" id="btn-camera" onclick="setSource('camera')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Camera
+      </button>
+      <button class="src-btn" id="btn-screen" onclick="setSource('screen')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Screen
+      </button>
+    </div>
+
+    <!-- Control buttons + go live -->
+    <div class="ctrl-row">
+      <!-- Mute mic -->
+      <button class="ctrl-btn" id="mute-btn" onclick="toggleMute()" title="Mute/Unmute mic">
+        <svg id="mic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+        <svg id="mic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23M12 19v4M8 23h8"/></svg>
+      </button>
+
+      <!-- Mic meter -->
+      <div class="mic-meter" id="mic-meter">
+        <div class="mic-bar" id="mb1"></div>
+        <div class="mic-bar" id="mb2"></div>
+        <div class="mic-bar" id="mb3"></div>
+        <div class="mic-bar" id="mb4"></div>
+        <div class="mic-bar" id="mb5"></div>
+      </div>
+
+      <!-- Go live button -->
+      <button class="go-btn" id="go-btn" onclick="toggleBroadcast()">Start broadcasting</button>
+
+      <!-- End class -->
+      <button class="ctrl-btn ctrl-btn-end" onclick="if(confirm('End this class for all students?')){endClass()}" title="End class">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% if streaming_enabled %}
+<script>
+const WHIP_URL = '{{ whip_url }}';
+let pc = null, stream = null, source = 'camera', live = false, muted = false;
+let audioCtx = null, analyser = null, animFrame = null;
+
+async function setSource(s) {
+  source = s;
+  document.getElementById('btn-camera').classList.toggle('active', s==='camera');
+  document.getElementById('btn-screen').classList.toggle('active', s==='screen');
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  await getStream();
+}
+
+async function getStream() {
+  try {
+    stream = source==='camera'
+      ? await navigator.mediaDevices.getUserMedia({video:true, audio:true})
+      : await navigator.mediaDevices.getDisplayMedia({video:true, audio:true});
+    const vid = document.getElementById('preview-video');
+    vid.srcObject = stream;
+    document.getElementById('cam-placeholder').style.display = 'none';
+    startMicMeter();
+    if (muted) {
+      stream.getAudioTracks().forEach(t => t.enabled = false);
+    }
+  } catch(e) {
+    alert('Could not access camera/microphone: ' + e.message);
+  }
+}
+
+function toggleMute() {
+  muted = !muted;
+  if (stream) stream.getAudioTracks().forEach(t => t.enabled = !muted);
+  document.getElementById('mute-btn').classList.toggle('muted', muted);
+  document.getElementById('mic-on').style.display = muted ? 'none' : 'block';
+  document.getElementById('mic-off').style.display = muted ? 'block' : 'none';
+}
+
+function startMicMeter() {
+  if (!stream) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    const src = audioCtx.createMediaStreamSource(stream);
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const bars = ['mb1','mb2','mb3','mb4','mb5'];
+    function draw() {
+      animFrame = requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(data);
+      const avg = data.slice(0,20).reduce((a,b)=>a+b,0)/20;
+      bars.forEach((id,i) => {
+        const h = Math.min(14, Math.max(3, (avg/255)*14*(0.6+i*0.1)));
+        document.getElementById(id).style.height = h+'px';
+      });
+    }
+    draw();
+  } catch(e) {}
+}
+
+async function toggleBroadcast() {
+  if (!live) await startBroadcast(); else stopBroadcast();
+}
+
+async function startBroadcast() {
+  if (!stream) await getStream();
+  if (!stream) return;
+  pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const r = await fetch(WHIP_URL, {method:'POST', headers:{'Content-Type':'application/sdp'}, body:offer.sdp});
+    if (!r.ok) {
+      const txt = await r.text();
+      alert('MediaMTX error ' + r.status + ': ' + txt);
+      pc.close(); pc=null; return;
+    }
+    const sdp = await r.text();
+    await pc.setRemoteDescription({type:'answer', sdp});
+    live = true;
+    document.getElementById('go-btn').textContent = 'Stop broadcasting';
+    document.getElementById('go-btn').classList.add('stop');
+    const badge = document.getElementById('status-badge');
+    badge.innerHTML = '<span class="live-dot"></span> LIVE';
+    badge.classList.add('is-live');
+  } catch(e) { alert('Broadcast error: '+e.message); pc && pc.close(); pc=null; }
+}
+
+function stopBroadcast() {
+  if (pc) { pc.close(); pc=null; }
+  live = false;
+  document.getElementById('go-btn').textContent = 'Start broadcasting';
+  document.getElementById('go-btn').classList.remove('stop');
+  const badge = document.getElementById('status-badge');
+  badge.textContent = 'Not broadcasting';
+  badge.classList.remove('is-live');
+}
+
+async function endClass() {
+  stopBroadcast();
+  const fd = new FormData();
+  fd.append('status','ended');
+  fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
+  await fetch('/admin/class/{{ lc.class_id }}/status/', {method:'POST',body:fd});
+  window.location = '/admin/class/{{ lc.class_id }}/';
+}
+
+// Show viewer label on wider screens
+function checkWidth() {
+  document.getElementById('viewer-label').style.display = window.innerWidth >= 480 ? 'inline' : 'none';
+}
+checkWidth();
+window.addEventListener('resize', checkWidth);
+
+getStream();
+</script>
+{% endif %}
+</body>
+</html>
