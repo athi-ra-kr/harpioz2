@@ -219,7 +219,18 @@ function startStallDetection(vid, wm) {
 }
 
 {% if lc.chat_enabled %}pollChat();{% endif %}
-{% if streaming_enabled %}startViewing();{% endif %}
+{% if streaming_enabled %}
+startViewing();
+
+// Every 5s, if video isn't playing, try reconnecting
+setInterval(function() {
+  const vid = document.getElementById('live-video');
+  const isPlaying = vid && vid.readyState >= 2 && !vid.paused && vid.currentTime > 0;
+  if (!isPlaying && !pc) {
+    startViewing();
+  }
+}, 5000);
+{% endif %}
 </script>
 </body>
 </html>
