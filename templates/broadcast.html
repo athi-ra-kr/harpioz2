@@ -64,15 +64,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
           <p>Choose camera or screen share, then start broadcasting.</p>
         </div>
-        <!-- Admin PiP bubble: their own camera visible while screen sharing -->
-        <div id="pip-bubble" style="display:none;position:absolute;bottom:90px;right:16px;width:140px;height:105px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.6);z-index:15;">
-          <video id="pip-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1);"></video>
-          <div style="position:absolute;top:5px;left:6px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.8);font-family:monospace;text-transform:uppercase;letter-spacing:0.05em;">You</div>
-        </div>
-        <!-- Hidden elements for canvas compositing -->
-        <canvas id="composite-canvas" style="display:none;"></canvas>
-        <video id="screen-vid-el" autoplay playsinline muted style="display:none;"></video>
-        <video id="cam-vid-el" autoplay playsinline muted style="display:none;"></video>
       {% else %}
         <div class="room-placeholder">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -143,9 +134,9 @@
 <script>
 const CLASS_ID = '{{ lc.class_id }}';
 const WHIP_URL = '{{ whip_url|default:"" }}';
-let pc = null, stream = null, micStream = null, pipStream = null;
+let pc = null, stream = null, micStream = null;
 let source = 'camera', live = false, muted = false;
-let audioCtx = null, analyser = null, compositeRAF = null;
+let audioCtx = null, analyser = null;
 let activePanel = null, lastMsgId = 0;
 
 // ── Panels ──────────────────────────────────────────────────────────
@@ -214,103 +205,27 @@ async function sendChat() {
 {% if streaming_enabled %}
 
 async function getStream() {
-  // Stop previous streams
   if (micStream) { micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
-  if (pipStream) { pipStream.getTracks().forEach(t=>t.stop()); pipStream=null; }
-  if (compositeRAF) { cancelAnimationFrame(compositeRAF); compositeRAF=null; }
 
   if (source === 'camera') {
     if (stream) stream.getTracks().forEach(t=>t.stop());
     stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
     document.getElementById('preview-video').srcObject = stream;
-    document.getElementById('pip-bubble').style.display = 'none';
-    document.getElementById('pip-video').srcObject = null;
 
   } else {
-    // 1. Screen video
-    const screenStream = await navigator.mediaDevices.getDisplayMedia({video:{frameRate:25}, audio:false});
-
-    // 2. Mic audio
+    // Screen video
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({video:true, audio:false});
+    // Mic audio separately
     try { micStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false}); }
     catch(e) { micStream = null; }
 
-    // 3. Camera for face overlay (shown to students + admin PiP)
-    try { pipStream = await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'}, audio:false}); }
-    catch(e) { pipStream = null; }
-
-    // 4. Canvas compositor — screen + face → one video track for students
-    const canvas = document.getElementById('composite-canvas');
-    const ctx = canvas.getContext('2d');
-    const screenVid = document.getElementById('screen-vid-el');
-    const camVid = document.getElementById('cam-vid-el');
-
-    screenVid.srcObject = screenStream;
-    await new Promise(r => { screenVid.onloadedmetadata = () => { screenVid.play().then(r).catch(r); }; });
-
-    canvas.width = screenVid.videoWidth || 1280;
-    canvas.height = screenVid.videoHeight || 720;
-
-    if (pipStream) {
-      camVid.srcObject = pipStream;
-      await new Promise(r => { camVid.onloadedmetadata = () => { camVid.play().then(r).catch(r); }; });
-    }
-
-    function drawFrame() {
-      compositeRAF = requestAnimationFrame(drawFrame);
-      // Draw screen
-      if (screenVid.readyState >= 2) ctx.drawImage(screenVid, 0, 0, canvas.width, canvas.height);
-      // Draw face bubble bottom-right
-      if (pipStream && camVid.readyState >= 2) {
-        const bw = Math.round(canvas.width * 0.2);
-        const bh = Math.round(bw * 0.75);
-        const bx = canvas.width - bw - 16;
-        const by = canvas.height - bh - 16;
-        ctx.save();
-        // Rounded clip
-        ctx.beginPath();
-        ctx.moveTo(bx + 10, by);
-        ctx.lineTo(bx + bw - 10, by);
-        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + 10);
-        ctx.lineTo(bx + bw, by + bh - 10);
-        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - 10, by + bh);
-        ctx.lineTo(bx + 10, by + bh);
-        ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - 10);
-        ctx.lineTo(bx, by + 10);
-        ctx.quadraticCurveTo(bx, by, bx + 10, by);
-        ctx.closePath();
-        ctx.clip();
-        // Mirror (natural selfie view)
-        ctx.translate(bx + bw, by);
-        ctx.scale(-1, 1);
-        ctx.drawImage(camVid, 0, 0, bw, bh);
-        ctx.restore();
-        // White border
-        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 10) : ctx.rect(bx, by, bw, bh);
-        ctx.stroke();
-      }
-    }
-    drawFrame();
-
-    // 5. Broadcast = canvas video + mic audio
-    const canvasStream = canvas.captureStream(25);
     if (stream) stream.getTracks().forEach(t=>t.stop());
-    const tracks = [...canvasStream.getVideoTracks()];
+    const tracks = [...screenStream.getVideoTracks()];
     if (micStream) tracks.push(...micStream.getAudioTracks());
     stream = new MediaStream(tracks);
+    document.getElementById('preview-video').srcObject = stream;
 
-    // Admin preview = canvas (same as what students see)
-    document.getElementById('preview-video').srcObject = canvasStream;
-
-    // Admin PiP bubble (separate mirrored view for comfort)
-    if (pipStream) {
-      document.getElementById('pip-video').srcObject = pipStream;
-      document.getElementById('pip-bubble').style.display = 'block';
-    }
-
-    // Browser Stop Sharing button
+    // Browser Stop Sharing button fallback to camera
     screenStream.getVideoTracks()[0].onended = () => {
       source = 'camera';
       document.getElementById('btn-camera').classList.add('active');
@@ -318,6 +233,11 @@ async function getStream() {
       setSource('camera');
     };
   }
+
+  document.getElementById('cam-placeholder').style.display = 'none';
+  if (muted) stream.getAudioTracks().forEach(t => t.enabled = false);
+  startMicMeter();
+}
 
   document.getElementById('cam-placeholder').style.display = 'none';
   if (muted) stream.getAudioTracks().forEach(t => t.enabled = false);
@@ -411,7 +331,6 @@ async function startBroadcast() {
 
 function stopBroadcast() {
   if (pc) { pc.close(); pc=null; }
-  if (compositeRAF) { cancelAnimationFrame(compositeRAF); compositeRAF=null; }
   live = false;
   document.getElementById('go-btn').textContent = 'Start broadcasting';
   document.getElementById('go-btn').classList.remove('stop');

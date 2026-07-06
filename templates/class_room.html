@@ -132,9 +132,23 @@ async function sendChat() {
 
 let viewerActive = true;
 let stallTimer = null;
+let currentWhepUrl = '{{ whep_url|default:"" }}';
+
+async function getLatestWhepUrl() {
+  try {
+    const r = await fetch('/class/{{ lc.class_id }}/stream-info/');
+    const data = await r.json();
+    if (data.whep_url) currentWhepUrl = data.whep_url;
+  } catch(e) {}
+}
 
 async function startViewing() {
-  if (!WHEP_URL || !viewerActive) return;
+  if (!viewerActive) return;
+
+  // Always fetch latest stream key before connecting (handles re-broadcast)
+  await getLatestWhepUrl();
+  if (!currentWhepUrl) { setTimeout(startViewing, 3000); return; }
+
   if (pc) { try { pc.close(); } catch(e) {} pc = null; }
 
   const vid = document.getElementById('live-video');
@@ -149,32 +163,26 @@ async function startViewing() {
       vid.srcObject = e.streams[0];
       vid.style.display = 'block';
       if (wm) wm.style.display = 'none';
-      // Start stall detection — if video stops playing, reconnect
       startStallDetection(vid, wm);
     }
   };
 
   pc.onconnectionstatechange = () => {
     const state = pc ? pc.connectionState : '';
-    if (state === 'failed' || state === 'closed') {
-      reconnect(vid, wm, 2000);
-    } else if (state === 'disconnected') {
-      // Wait a moment — sometimes recovers on its own
-      reconnect(vid, wm, 3000);
-    }
+    if (state === 'failed' || state === 'closed') reconnect(vid, wm, 2000);
+    else if (state === 'disconnected') reconnect(vid, wm, 3000);
   };
 
   try {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    const r = await fetch(WHEP_URL, {
+    const r = await fetch(currentWhepUrl, {
       method: 'POST',
       headers: {'Content-Type': 'application/sdp'},
       body: offer.sdp
     });
     if (r.ok) {
-      const sdp = await r.text();
-      await pc.setRemoteDescription({type:'answer', sdp});
+      await pc.setRemoteDescription({type:'answer', sdp: await r.text()});
     } else {
       if (pc) { pc.close(); pc = null; }
       reconnect(vid, wm, 3000);
@@ -200,7 +208,6 @@ function startStallDetection(vid, wm) {
     if (!pc) return;
     if (vid.readyState >= 2 && !vid.paused) {
       if (vid.currentTime === lastTime) {
-        // Video stalled — broadcaster switched source, reconnect
         reconnect(vid, wm, 1000);
         return;
       }
@@ -208,11 +215,11 @@ function startStallDetection(vid, wm) {
     }
     stallTimer = setTimeout(check, 2000);
   }
-  stallTimer = setTimeout(check, 4000); // give 4s to start before checking
+  stallTimer = setTimeout(check, 4000);
 }
 
 {% if lc.chat_enabled %}pollChat();{% endif %}
-{% if streaming_enabled and whep_url %}startViewing();{% endif %}
+{% if streaming_enabled %}startViewing();{% endif %}
 </script>
 </body>
 </html>

@@ -289,3 +289,14 @@ def class_participants(request, class_id):
         'joined': localtime(p.joined_at).strftime('%H:%M'),
     } for p in lc.participants.all()]
     return JsonResponse({'participants': data})
+
+
+# ─── Stream info API (for viewer to get current WHEP URL) ─────────────────────
+
+def stream_info(request, class_id):
+    from django.conf import settings as django_settings
+    lc = get_object_or_404(LiveClass, class_id=class_id)
+    mediamtx_base = django_settings.MEDIAMTX_BASE_URL
+    streaming_enabled = django_settings.STREAMING_ENABLED
+    whep_url = f"{mediamtx_base}/{lc.stream_key}/whep" if streaming_enabled and mediamtx_base else None
+    return JsonResponse({'whep_url': whep_url, 'status': lc.status})

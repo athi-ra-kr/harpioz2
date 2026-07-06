@@ -23,6 +23,7 @@ urlpatterns = [
     path('class/<str:class_id>/chat/', views.chat_messages, name='chat_messages'),
     path('class/<str:class_id>/chat/send/', views.chat_send, name='chat_send'),
     path('class/<str:class_id>/chat/<int:msg_id>/delete/', views.chat_delete, name='chat_delete'),
+    path('class/<str:class_id>/stream-info/', views.stream_info, name='stream_info'),
     path('class/<str:class_id>/participants/', views.class_participants, name='class_participants'),
 
     # Admin settings
