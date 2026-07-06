@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.timezone import localtime
 from django.views.decorators.http import require_POST
 
 from .models import ChatMessage, LiveClass, Participant
@@ -100,11 +101,24 @@ def admin_delete_class(request, class_id):
 @login_required(login_url='/admin-login/')
 def admin_broadcast(request, class_id):
     lc = get_object_or_404(LiveClass, class_id=class_id)
+
+    # Always mark as live when admin opens broadcast page
+    # Also generate a fresh stream_key so MediaMTX treats it as a new stream
+    # (avoids stale session causing black screen on re-broadcast)
+    if lc.status != 'live':
+        lc.status = 'live'
+        # Fresh stream key = new MediaMTX path, no stale state
+        import random, string
+        suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        lc.stream_key = f"class-{lc.class_id}-{suffix}"
+        lc.save(update_fields=['status', 'stream_key'])
+
     streaming_enabled = settings.STREAMING_ENABLED
     mediamtx_base = settings.MEDIAMTX_BASE_URL
     whip_url = f"{mediamtx_base}/{lc.stream_key}/whip" if streaming_enabled and mediamtx_base else None
+    whep_url = f"{mediamtx_base}/{lc.stream_key}/whep" if streaming_enabled and mediamtx_base else None
     return render(request, 'broadcast.html', {
-        'lc': lc, 'whip_url': whip_url, 'streaming_enabled': streaming_enabled
+        'lc': lc, 'whip_url': whip_url, 'whep_url': whep_url, 'streaming_enabled': streaming_enabled
     })
 
 
@@ -187,7 +201,7 @@ def chat_messages(request, class_id):
     ).values('id', 'participant_name', 'is_admin', 'text', 'created_at')
     data = [{'id': m['id'], 'name': m['participant_name'],
               'is_admin': m['is_admin'], 'text': m['text'],
-              'time': m['created_at'].strftime('%H:%M')} for m in msgs]
+              'time': localtime(m['created_at']).strftime('%H:%M')} for m in msgs]
     return JsonResponse({'messages': data})
 
 
@@ -216,7 +230,7 @@ def chat_send(request, class_id):
 
     msg = ChatMessage.objects.create(live_class=lc, participant_name=name, is_admin=is_admin, text=text)
     return JsonResponse({'id': msg.id, 'name': name, 'text': text,
-                         'is_admin': is_admin, 'time': msg.created_at.strftime('%H:%M')})
+                         'is_admin': is_admin, 'time': localtime(msg.created_at).strftime('%H:%M')})
 
 
 @login_required(login_url='/admin-login/')
@@ -272,6 +286,6 @@ def class_participants(request, class_id):
         'name': p.name,
         'email': p.email,
         'mobile': p.mobile,
-        'joined': p.joined_at.strftime('%H:%M'),
+        'joined': localtime(p.joined_at).strftime('%H:%M'),
     } for p in lc.participants.all()]
     return JsonResponse({'participants': data})

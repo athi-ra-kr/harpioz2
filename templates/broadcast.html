@@ -5,158 +5,74 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Broadcasting — {{ lc.title }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/main.css' %}?v=7">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}?v=8">
   <style>
-    /* Side panel shared styles */
-    .side-panel {
-      position: absolute;
-      top: 0; right: 0; bottom: 0;
-      width: min(320px, 88vw);
-      background: var(--bg);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      transform: translateX(100%);
-      transition: transform 0.22s ease;
-      z-index: 30;
+    .side-panel{position:absolute;top:0;right:0;bottom:0;width:min(320px,88vw);background:var(--bg);border-left:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.22s ease;z-index:30;}
+    .side-panel.open{transform:translateX(0);}
+    .panel-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .panel-head-title{font-size:13px;font-weight:600;color:var(--text);}
+    .panel-close{width:28px;height:28px;border-radius:50%;border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+    .panel-close:hover{background:var(--surface-2);}
+    .participants-list{flex:1;overflow-y:auto;padding:12px 14px;}
+    .participant-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+    .participant-item:last-child{border-bottom:none;}
+    .participant-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1a1000;flex-shrink:0;}
+    .participant-name{font-size:13.5px;font-weight:500;color:var(--text);}
+    .participant-time{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);}
+    .participant-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:100px;background:var(--accent);color:#1a1000;font-size:10px;font-weight:700;}
+    .panel-backdrop{display:none;position:absolute;inset:0;background:rgba(0,0,0,0.5);z-index:29;}
+    .panel-backdrop.open{display:block;}
+    @media(min-width:900px){
+      .side-panel{position:relative;transform:none;display:none;flex-shrink:0;}
+      .side-panel.open{display:flex;}
+      .panel-backdrop{display:none!important;}
     }
-    .side-panel.open { transform: translateX(0); }
-    .panel-head {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-    .panel-head-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .panel-close {
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      border: none;
-      background: transparent;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-size: 18px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .panel-close:hover { background: var(--surface-2); }
-
-    /* Participants panel */
-    .participants-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px 14px;
-    }
-    .participant-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .participant-item:last-child { border-bottom: none; }
-    .participant-avatar {
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      color: #1a1000;
-      flex-shrink: 0;
-    }
-    .participant-name { font-size: 13.5px; font-weight: 500; color: var(--text); }
-    .participant-time { font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); }
-    .participant-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 18px;
-      height: 18px;
-      padding: 0 5px;
-      border-radius: 100px;
-      background: var(--accent);
-      color: #1a1000;
-      font-size: 10px;
-      font-weight: 700;
-      font-family: var(--font-mono);
-    }
-
-    /* Backdrop */
-    .panel-backdrop {
-      display: none;
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 29;
-    }
-    .panel-backdrop.open { display: block; }
-
-    @media (min-width: 900px) {
-      .side-panel { position: relative; transform: none; display: none; flex-shrink: 0; }
-      .side-panel.open { display: flex; }
-      .panel-backdrop { display: none !important; }
-      .room-body { display: flex; flex: 1; min-height: 0; }
-      .room-video-area { flex: 1; }
-    }
+    /* PiP bubble */
+    #pip-bubble{display:none;position:absolute;bottom:90px;right:16px;width:140px;height:105px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.6);z-index:15;}
+    #pip-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+    #pip-label{position:absolute;top:5px;left:6px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.8);font-family:monospace;text-transform:uppercase;letter-spacing:0.05em;}
   </style>
 </head>
 <body>
 <div class="room-shell">
 
-  <!-- Top bar -->
   <div class="room-topbar">
     <div class="room-topbar-left">
-      <a href="{% url 'admin_class_detail' lc.class_id %}" class="room-back" title="Back">
+      <a href="{% url 'admin_class_detail' lc.class_id %}" class="room-back">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </a>
       <span class="room-topbar-title">{{ lc.title }}</span>
     </div>
     <div class="room-topbar-right">
       <div id="status-badge" class="broadcast-status-badge">Not broadcasting</div>
-
-      <!-- Participants button -->
       <button class="room-topbar-btn" id="participants-btn" onclick="togglePanel('participants')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><circle cx="9" cy="7" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16 4.5c1.7.3 3 1.8 3 3.5s-1.3 3.2-3 3.5M19.5 20c0-2.9-1.8-5.4-4.5-6.3"/></svg>
-        <span id="participants-label">Students</span>
-        <span class="participant-count" id="participant-count">0</span>
+        Students <span class="participant-count" id="participant-count">0</span>
       </button>
-
-      <!-- Chat button -->
       <button class="room-topbar-btn" id="chat-btn" onclick="togglePanel('chat')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M21 11.5a8.5 8.5 0 01-8.5 8.5c-1.4 0-2.7-.3-3.9-.9L3 21l1.9-5.6A8.5 8.5 0 1121 11.5z"/></svg>
-        <span id="chat-label">Chat</span>
+        Chat
       </button>
     </div>
   </div>
 
-  <!-- Body: video + side panels -->
-  <div class="room-body" style="flex:1;display:flex;min-height:0;position:relative;">
-
-    <!-- Video area -->
+  <div style="flex:1;display:flex;min-height:0;position:relative;">
     <div class="room-video-area">
       {% if streaming_enabled %}
         <video id="preview-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:contain;"></video>
         <div id="cam-placeholder" class="room-placeholder">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          <p style="font-size:14px;">Choose camera or screen share below, then start broadcasting.</p>
+          <p>Choose camera or screen share, then start broadcasting.</p>
         </div>
-
-        <!-- PiP camera bubble (visible to broadcaster only, mirrored) -->
-        <div id="pip-bubble" style="display:none;position:absolute;bottom:80px;right:16px;width:140px;height:105px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.25);box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:15;">
+        <!-- Admin PiP bubble: their own camera visible while screen sharing -->
+        <div id="pip-bubble" style="display:none;position:absolute;bottom:90px;right:16px;width:140px;height:105px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.6);z-index:15;">
           <video id="pip-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1);"></video>
-          <div style="position:absolute;top:5px;left:6px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.7);font-family:monospace;text-transform:uppercase;letter-spacing:0.05em;">You</div>
+          <div style="position:absolute;top:5px;left:6px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.8);font-family:monospace;text-transform:uppercase;letter-spacing:0.05em;">You</div>
         </div>
-
-        <!-- Hidden elements for canvas compositing (not visible, used for drawing) -->
+        <!-- Hidden elements for canvas compositing -->
         <canvas id="composite-canvas" style="display:none;"></canvas>
-        <video id="screen-vid-hidden" autoplay playsinline muted style="display:none;"></video>
-        <video id="cam-vid-hidden" autoplay playsinline muted style="display:none;"></video>
+        <video id="screen-vid-el" autoplay playsinline muted style="display:none;"></video>
+        <video id="cam-vid-el" autoplay playsinline muted style="display:none;"></video>
       {% else %}
         <div class="room-placeholder">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -165,40 +81,33 @@
       {% endif %}
     </div>
 
-    <!-- Participants panel -->
     <div class="side-panel" id="panel-participants">
       <div class="panel-head">
         <span class="panel-head-title">Joined students</span>
-        <button class="panel-close" onclick="closePanel('participants')">×</button>
+        <button class="panel-close" onclick="closeAllPanels()">×</button>
       </div>
       <div class="participants-list" id="participants-list">
-        <div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px;">No students have joined yet.</div>
+        <div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px;">No students joined yet.</div>
       </div>
     </div>
 
-    <!-- Chat panel -->
     <div class="side-panel" id="panel-chat">
       <div class="panel-head">
         <span class="panel-head-title">Class chat</span>
-        <button class="panel-close" onclick="closePanel('chat')">×</button>
+        <button class="panel-close" onclick="closeAllPanels()">×</button>
       </div>
       <div class="chat-msgs" id="chat-msgs"></div>
       {% if lc.chat_enabled %}
       <div class="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Send a message as instructor…" onkeydown="if(event.key==='Enter')sendChat()">
+        <input type="text" id="chat-input" placeholder="Message as instructor…" onkeydown="if(event.key==='Enter')sendChat()">
         <button class="btn btn-primary btn-sm" onclick="sendChat()">Send</button>
       </div>
-      {% else %}
-      <p style="padding:14px;color:var(--text-faint);font-size:13px;">Chat is disabled for this class.</p>
       {% endif %}
     </div>
 
-    <!-- Mobile backdrop -->
     <div class="panel-backdrop" id="panel-backdrop" onclick="closeAllPanels()"></div>
+  </div>
 
-  </div><!-- end room-body -->
-
-  <!-- Bottom controls -->
   {% if streaming_enabled %}
   <div class="room-controls">
     <div class="src-toggle">
@@ -212,19 +121,17 @@
       </button>
     </div>
     <div class="ctrl-row">
-      <button class="ctrl-btn" id="mute-btn" onclick="toggleMute()" title="Mute/Unmute mic">
+      <button class="ctrl-btn" id="mute-btn" onclick="toggleMute()" title="Mute mic">
         <svg id="mic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
         <svg id="mic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23M12 19v4M8 23h8"/></svg>
       </button>
-      <div class="mic-meter" id="mic-meter">
-        <div class="mic-bar" id="mb1"></div>
-        <div class="mic-bar" id="mb2"></div>
-        <div class="mic-bar" id="mb3"></div>
-        <div class="mic-bar" id="mb4"></div>
+      <div class="mic-meter">
+        <div class="mic-bar" id="mb1"></div><div class="mic-bar" id="mb2"></div>
+        <div class="mic-bar" id="mb3"></div><div class="mic-bar" id="mb4"></div>
         <div class="mic-bar" id="mb5"></div>
       </div>
       <button class="go-btn" id="go-btn" onclick="toggleBroadcast()">Start broadcasting</button>
-      <button class="ctrl-btn ctrl-btn-end" onclick="if(confirm('End this class for all students?')){endClass()}" title="End class">
+      <button class="ctrl-btn ctrl-btn-end" onclick="if(confirm('End class for all students?')){endClass()}" title="End class">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -236,67 +143,48 @@
 <script>
 const CLASS_ID = '{{ lc.class_id }}';
 const WHIP_URL = '{{ whip_url|default:"" }}';
-let pc = null, stream = null, source = 'camera', live = false, muted = false;
-let audioCtx = null, analyser = null, animFrame = null;
+let pc = null, stream = null, micStream = null, pipStream = null;
+let source = 'camera', live = false, muted = false;
+let audioCtx = null, analyser = null, compositeRAF = null;
 let activePanel = null, lastMsgId = 0;
 
-// ── Panel management ──────────────────────────────────────────────────
+// ── Panels ──────────────────────────────────────────────────────────
 function togglePanel(name) {
   if (activePanel === name) { closeAllPanels(); return; }
   closeAllPanels(false);
   activePanel = name;
-  document.getElementById('panel-' + name).classList.add('open');
+  document.getElementById('panel-'+name).classList.add('open');
   document.getElementById('panel-backdrop').classList.add('open');
-  document.getElementById(name + '-btn').classList.add('active');
-  if (name === 'chat') {
-    setTimeout(() => {
-      const box = document.getElementById('chat-msgs');
-      if (box) box.scrollTop = box.scrollHeight;
-    }, 100);
-  }
+  document.getElementById(name+'-btn').classList.add('active');
+  if (name === 'chat') setTimeout(() => { const b=document.getElementById('chat-msgs'); if(b) b.scrollTop=b.scrollHeight; }, 100);
 }
-
-function closePanel(name) { closeAllPanels(); }
-
-function closeAllPanels(resetActive = true) {
+function closeAllPanels(reset=true) {
   ['participants','chat'].forEach(n => {
-    document.getElementById('panel-' + n).classList.remove('open');
-    const btn = document.getElementById(n + '-btn');
-    if (btn) btn.classList.remove('active');
+    document.getElementById('panel-'+n).classList.remove('open');
+    const b=document.getElementById(n+'-btn'); if(b) b.classList.remove('active');
   });
   document.getElementById('panel-backdrop').classList.remove('open');
-  if (resetActive) activePanel = null;
+  if (reset) activePanel = null;
 }
 
-// ── Participants polling ───────────────────────────────────────────────
+// ── Participants ─────────────────────────────────────────────────────
 async function pollParticipants() {
   try {
-    const r = await fetch('/class/' + CLASS_ID + '/participants/');
+    const r = await fetch('/class/'+CLASS_ID+'/participants/');
     const data = await r.json();
-    const count = data.participants.length;
-    document.getElementById('participant-count').textContent = count;
+    document.getElementById('participant-count').textContent = data.participants.length;
     const list = document.getElementById('participants-list');
-    if (count === 0) {
-      list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px;">No students have joined yet.</div>';
-    } else {
-      list.innerHTML = data.participants.map(p => `
-        <div class="participant-item">
-          <div class="participant-avatar">${p.name.slice(0,2).toUpperCase()}</div>
-          <div style="min-width:0;">
-            <div class="participant-name">${p.name}</div>
-            <div class="participant-time">${p.email} · Joined ${p.joined}</div>
-          </div>
-        </div>
-      `).join('');
-    }
+    list.innerHTML = data.participants.length === 0
+      ? '<div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px;">No students joined yet.</div>'
+      : data.participants.map(p=>`<div class="participant-item"><div class="participant-avatar">${p.name.slice(0,2).toUpperCase()}</div><div><div class="participant-name">${p.name}</div><div class="participant-time">${p.email} · ${p.joined}</div></div></div>`).join('');
   } catch(e) {}
   setTimeout(pollParticipants, 5000);
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────
+// ── Chat ─────────────────────────────────────────────────────────────
 async function pollChat() {
   try {
-    const r = await fetch('/class/' + CLASS_ID + '/chat/?since=' + lastMsgId);
+    const r = await fetch('/class/'+CLASS_ID+'/chat/?since='+lastMsgId);
     const data = await r.json();
     if (data.messages.length) {
       const box = document.getElementById('chat-msgs');
@@ -304,7 +192,7 @@ async function pollChat() {
         lastMsgId = Math.max(lastMsgId, m.id);
         const el = document.createElement('div');
         el.className = 'chat-msg';
-        el.innerHTML = '<div class="author ' + (m.is_admin ? 'is-admin' : 'is-student') + '">' + m.name + '<span class="time">' + m.time + '</span></div><div class="body">' + m.text + '</div>';
+        el.innerHTML = '<div class="author '+(m.is_admin?'is-admin':'is-student')+'">'+m.name+'<span class="time">'+m.time+'</span></div><div class="body">'+m.text+'</div>';
         box.appendChild(el);
       });
       box.scrollTop = box.scrollHeight;
@@ -312,189 +200,188 @@ async function pollChat() {
   } catch(e) {}
   setTimeout(pollChat, 3000);
 }
-
 async function sendChat() {
   const inp = document.getElementById('chat-input');
-  const text = inp.value.trim();
-  if (!text) return;
+  const text = inp.value.trim(); if (!text) return;
   inp.value = '';
   const fd = new FormData();
   fd.append('text', text);
   fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-  await fetch('/class/' + CLASS_ID + '/chat/send/', {method: 'POST', body: fd});
+  await fetch('/class/'+CLASS_ID+'/chat/send/', {method:'POST', body:fd});
 }
 
-// ── Broadcast ─────────────────────────────────────────────────────────
+// ── Streaming ─────────────────────────────────────────────────────────
 {% if streaming_enabled %}
-let micStream = null;
+
+async function getStream() {
+  // Stop previous streams
+  if (micStream) { micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
+  if (pipStream) { pipStream.getTracks().forEach(t=>t.stop()); pipStream=null; }
+  if (compositeRAF) { cancelAnimationFrame(compositeRAF); compositeRAF=null; }
+
+  if (source === 'camera') {
+    if (stream) stream.getTracks().forEach(t=>t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+    document.getElementById('preview-video').srcObject = stream;
+    document.getElementById('pip-bubble').style.display = 'none';
+    document.getElementById('pip-video').srcObject = null;
+
+  } else {
+    // 1. Screen video
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({video:{frameRate:25}, audio:false});
+
+    // 2. Mic audio
+    try { micStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false}); }
+    catch(e) { micStream = null; }
+
+    // 3. Camera for face overlay (shown to students + admin PiP)
+    try { pipStream = await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'}, audio:false}); }
+    catch(e) { pipStream = null; }
+
+    // 4. Canvas compositor — screen + face → one video track for students
+    const canvas = document.getElementById('composite-canvas');
+    const ctx = canvas.getContext('2d');
+    const screenVid = document.getElementById('screen-vid-el');
+    const camVid = document.getElementById('cam-vid-el');
+
+    screenVid.srcObject = screenStream;
+    await new Promise(r => { screenVid.onloadedmetadata = () => { screenVid.play().then(r).catch(r); }; });
+
+    canvas.width = screenVid.videoWidth || 1280;
+    canvas.height = screenVid.videoHeight || 720;
+
+    if (pipStream) {
+      camVid.srcObject = pipStream;
+      await new Promise(r => { camVid.onloadedmetadata = () => { camVid.play().then(r).catch(r); }; });
+    }
+
+    function drawFrame() {
+      compositeRAF = requestAnimationFrame(drawFrame);
+      // Draw screen
+      if (screenVid.readyState >= 2) ctx.drawImage(screenVid, 0, 0, canvas.width, canvas.height);
+      // Draw face bubble bottom-right
+      if (pipStream && camVid.readyState >= 2) {
+        const bw = Math.round(canvas.width * 0.2);
+        const bh = Math.round(bw * 0.75);
+        const bx = canvas.width - bw - 16;
+        const by = canvas.height - bh - 16;
+        ctx.save();
+        // Rounded clip
+        ctx.beginPath();
+        ctx.moveTo(bx + 10, by);
+        ctx.lineTo(bx + bw - 10, by);
+        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + 10);
+        ctx.lineTo(bx + bw, by + bh - 10);
+        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - 10, by + bh);
+        ctx.lineTo(bx + 10, by + bh);
+        ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - 10);
+        ctx.lineTo(bx, by + 10);
+        ctx.quadraticCurveTo(bx, by, bx + 10, by);
+        ctx.closePath();
+        ctx.clip();
+        // Mirror (natural selfie view)
+        ctx.translate(bx + bw, by);
+        ctx.scale(-1, 1);
+        ctx.drawImage(camVid, 0, 0, bw, bh);
+        ctx.restore();
+        // White border
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 10) : ctx.rect(bx, by, bw, bh);
+        ctx.stroke();
+      }
+    }
+    drawFrame();
+
+    // 5. Broadcast = canvas video + mic audio
+    const canvasStream = canvas.captureStream(25);
+    if (stream) stream.getTracks().forEach(t=>t.stop());
+    const tracks = [...canvasStream.getVideoTracks()];
+    if (micStream) tracks.push(...micStream.getAudioTracks());
+    stream = new MediaStream(tracks);
+
+    // Admin preview = canvas (same as what students see)
+    document.getElementById('preview-video').srcObject = canvasStream;
+
+    // Admin PiP bubble (separate mirrored view for comfort)
+    if (pipStream) {
+      document.getElementById('pip-video').srcObject = pipStream;
+      document.getElementById('pip-bubble').style.display = 'block';
+    }
+
+    // Browser Stop Sharing button
+    screenStream.getVideoTracks()[0].onended = () => {
+      source = 'camera';
+      document.getElementById('btn-camera').classList.add('active');
+      document.getElementById('btn-screen').classList.remove('active');
+      setSource('camera');
+    };
+  }
+
+  document.getElementById('cam-placeholder').style.display = 'none';
+  if (muted) stream.getAudioTracks().forEach(t => t.enabled = false);
+  startMicMeter();
+}
 
 async function setSource(s) {
   source = s;
   document.getElementById('btn-camera').classList.toggle('active', s==='camera');
   document.getElementById('btn-screen').classList.toggle('active', s==='screen');
 
-  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  if (micStream) { micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
-
-  const wasLive = live;
-  if (wasLive) stopBroadcast();
-
-  await getStream();
-
-  if (wasLive && stream) await startBroadcast();
-}
-
-let pipCamStream = null;
-let canvasStream = null;
-let compositeRAF = null;
-
-async function getStream() {
   try {
-    // Stop any existing canvas compositing
-    if (compositeRAF) { cancelAnimationFrame(compositeRAF); compositeRAF = null; }
-
-    if (source === 'camera') {
-      stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-      hidePiP();
-      document.getElementById('preview-video').srcObject = stream;
-    } else {
-      // 1. Get screen video
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({video:true, audio:false});
-
-      // 2. Get mic audio separately
-      try {
-        micStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
-      } catch(e) { micStream = null; }
-
-      // 3. Get camera video for PiP overlay
-      try {
-        pipCamStream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
-      } catch(e) { pipCamStream = null; }
-
-      // 4. Show local PiP bubble (mirrored, for broadcaster to see themselves)
-      const pipBubble = document.getElementById('pip-bubble');
-      const pipVid = document.getElementById('pip-video');
-      if (pipCamStream) {
-        pipVid.srcObject = pipCamStream;
-        pipBubble.style.display = 'flex';
-      }
-
-      // 5. Set up canvas compositor (screen + camera overlay → one stream for broadcast)
-      const canvas = document.getElementById('composite-canvas');
-      const ctx = canvas.getContext('2d');
-
-      // Hidden video elements for drawing
-      const screenVid = document.getElementById('screen-vid-hidden');
-      const camVid = document.getElementById('cam-vid-hidden');
-      screenVid.srcObject = screenStream;
-      if (pipCamStream) camVid.srcObject = pipCamStream;
-
-      await new Promise(r => { screenVid.onloadedmetadata = r; });
-      canvas.width = screenVid.videoWidth || 1280;
-      canvas.height = screenVid.videoHeight || 720;
-
-      // Composite loop: draw screen full-size + camera bubble bottom-right
-      function composite() {
-        compositeRAF = requestAnimationFrame(composite);
-        ctx.drawImage(screenVid, 0, 0, canvas.width, canvas.height);
-        if (pipCamStream && camVid.readyState >= 2) {
-          const pw = Math.round(canvas.width * 0.22);
-          const ph = Math.round(pw * 0.75);
-          const px = canvas.width - pw - 16;
-          const py = canvas.height - ph - 16;
-          // Rounded clip
-          ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(px, py, pw, ph, 10);
-          ctx.clip();
-          // Mirror camera
-          ctx.translate(px + pw, py);
-          ctx.scale(-1, 1);
-          ctx.drawImage(camVid, 0, 0, pw, ph);
-          ctx.restore();
-          // Border
-          ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.roundRect(px, py, pw, ph, 10);
-          ctx.stroke();
-        }
-      }
-      composite();
-
-      // 6. Use canvas video track + mic audio as the broadcast stream
-      canvasStream = canvas.captureStream(30);
-      const tracks = [...canvasStream.getVideoTracks()];
-      if (micStream) tracks.push(...micStream.getAudioTracks());
-      stream = new MediaStream(tracks);
-
-      // Show canvas preview (what admin sees = what students get)
-      document.getElementById('preview-video').srcObject = canvasStream;
-
-      // Auto fall back on browser Stop Sharing
-      screenStream.getVideoTracks().forEach(t => {
-        t.onended = () => {
-          source = 'camera';
-          document.getElementById('btn-camera').classList.add('active');
-          document.getElementById('btn-screen').classList.remove('active');
-          setSource('camera');
-        };
-      });
-    }
-
-    document.getElementById('cam-placeholder').style.display = 'none';
-    startMicMeter();
-    if (muted) stream.getAudioTracks().forEach(t => t.enabled = false);
-
+    await getStream();
   } catch(e) {
-    if (source === 'screen') {
+    if (s === 'screen') {
+      // User cancelled — revert to camera
       source = 'camera';
       document.getElementById('btn-camera').classList.add('active');
       document.getElementById('btn-screen').classList.remove('active');
-      hidePiP();
       await getStream();
-    } else {
-      alert('Could not access camera/microphone: ' + e.message);
+      return;
     }
+    alert('Could not access media: ' + e.message);
+    return;
   }
-}
 
-function hidePiP() {
-  document.getElementById('pip-bubble').style.display = 'none';
-  if (compositeRAF) { cancelAnimationFrame(compositeRAF); compositeRAF = null; }
-  if (pipCamStream) { pipCamStream.getTracks().forEach(t=>t.stop()); pipCamStream=null; }
-  document.getElementById('pip-video').srcObject = null;
-  document.getElementById('cam-vid-hidden').srcObject = null;
-  document.getElementById('screen-vid-hidden').srcObject = null;
+  // If live, replace tracks in existing PC without restarting WHIP
+  if (live && pc) {
+    const senders = pc.getSenders();
+    const vs = senders.find(s => s.track && s.track.kind === 'video');
+    const as = senders.find(s => s.track && s.track.kind === 'audio');
+    const newVideo = stream.getVideoTracks()[0];
+    const newAudio = stream.getAudioTracks()[0];
+    try {
+      if (vs && newVideo) await vs.replaceTrack(newVideo);
+      if (as && newAudio) await as.replaceTrack(newAudio);
+    } catch(e) { console.error('replaceTrack failed:', e); }
+  }
 }
 
 function toggleMute() {
   muted = !muted;
-  if (stream) stream.getAudioTracks().forEach(t => t.enabled = !muted);
+  stream.getAudioTracks().forEach(t => t.enabled = !muted);
+  if (micStream) micStream.getAudioTracks().forEach(t => t.enabled = !muted);
   document.getElementById('mute-btn').classList.toggle('muted', muted);
   document.getElementById('mic-on').style.display = muted ? 'none' : 'block';
   document.getElementById('mic-off').style.display = muted ? 'block' : 'none';
 }
 
 function startMicMeter() {
-  if (!stream) return;
   try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    const src = audioCtx.createMediaStreamSource(stream);
+    if (audioCtx) { audioCtx.close(); audioCtx=null; }
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
+    const src = audioCtx.createMediaStreamSource(micStream || stream);
     src.connect(analyser);
     const data = new Uint8Array(analyser.frequencyBinCount);
     const bars = ['mb1','mb2','mb3','mb4','mb5'];
-    function draw() {
+    (function draw() {
       requestAnimationFrame(draw);
       analyser.getByteFrequencyData(data);
       const avg = data.slice(0,20).reduce((a,b)=>a+b,0)/20;
-      bars.forEach((id,i) => {
-        document.getElementById(id).style.height = Math.min(14, Math.max(3, (avg/255)*14*(0.6+i*0.1))) + 'px';
-      });
-    }
-    draw();
+      bars.forEach((id,i) => { document.getElementById(id).style.height = Math.min(14,Math.max(3,(avg/255)*14*(0.6+i*0.1)))+'px'; });
+    })();
   } catch(e) {}
 }
 
@@ -511,21 +398,20 @@ async function startBroadcast() {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     const r = await fetch(WHIP_URL, {method:'POST', headers:{'Content-Type':'application/sdp'}, body:offer.sdp});
-    if (!r.ok) { alert('MediaMTX error ' + r.status); pc.close(); pc=null; return; }
-    const sdp = await r.text();
-    await pc.setRemoteDescription({type:'answer', sdp});
+    if (!r.ok) { alert('MediaMTX error '+r.status); pc.close(); pc=null; return; }
+    await pc.setRemoteDescription({type:'answer', sdp: await r.text()});
     live = true;
     document.getElementById('go-btn').textContent = 'Stop broadcasting';
     document.getElementById('go-btn').classList.add('stop');
     const badge = document.getElementById('status-badge');
     badge.innerHTML = '<span class="live-dot"></span> LIVE';
     badge.classList.add('is-live');
-  } catch(e) { alert('Broadcast error: ' + e.message); if (pc) { pc.close(); pc=null; } }
+  } catch(e) { alert('Broadcast error: '+e.message); if(pc){pc.close();pc=null;} }
 }
 
 function stopBroadcast() {
   if (pc) { pc.close(); pc=null; }
-  if (compositeRAF) { cancelAnimationFrame(compositeRAF); compositeRAF = null; }
+  if (compositeRAF) { cancelAnimationFrame(compositeRAF); compositeRAF=null; }
   live = false;
   document.getElementById('go-btn').textContent = 'Start broadcasting';
   document.getElementById('go-btn').classList.remove('stop');
@@ -537,10 +423,10 @@ function stopBroadcast() {
 async function endClass() {
   stopBroadcast();
   const fd = new FormData();
-  fd.append('status', 'ended');
-  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-  await fetch('/admin/class/{{ lc.class_id }}/status/', {method:'POST', body:fd});
-  window.location = '/admin/class/{{ lc.class_id }}/';
+  fd.append('status','ended');
+  fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
+  await fetch('/admin/class/{{ lc.class_id }}/status/',{method:'POST',body:fd});
+  window.location='/admin/class/{{ lc.class_id }}/';
 }
 
 getStream();
