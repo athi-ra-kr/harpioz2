@@ -1,0 +1,157 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% block title %}{% if site_settings %}{{ site_settings.site_title }}{% else %}Harpioz{% endif %}{% endblock %}</title>
+  {% if site_settings and site_settings.site_description %}
+  <meta name="description" content="{{ site_settings.site_description }}">
+  {% endif %}
+  {% if site_settings and site_settings.favicon %}
+  <link rel="icon" type="image/x-icon" href="{{ site_settings.favicon.url }}">
+  {% endif %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}?v=6">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<div class="gradient-bar"></div>
+
+<header class="header">
+  <a href="{% if request.user.is_staff %}{% url 'admin_dashboard' %}{% else %}/{% endif %}" class="logo">
+    {% if site_settings and site_settings.logo %}
+      <img src="{{ site_settings.logo.url }}" alt="Logo" style="height:30px;width:auto;border-radius:6px;">
+    {% else %}
+      <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 4 2 10l10 6 10-6z"/><path d="M6 12.5V18c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5"/></svg></span>
+    {% endif %}
+    <span class="logo-text">{% if site_settings and site_settings.site_title != 'Harpioz' %}{{ site_settings.site_title }}{% else %}Harp<span>ioz</span>{% endif %}</span>
+  </a>
+
+  <!-- Live clock -->
+  <div class="header-clock" id="header-clock">
+    <div class="clock-time" id="clock-time">--:-- --</div>
+    <div class="clock-date" id="clock-date">-- --- ----</div>
+  </div>
+
+  <div class="header-right">
+    {% if request.user.is_authenticated and request.user.is_staff %}
+      <a href="{% url 'create_class' %}" class="btn btn-primary btn-sm desktop-only">+ New Class</a>
+      <a href="{% url 'admin_settings' %}" class="header-icon-btn desktop-only" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </a>
+      <a href="{% url 'admin_logout' %}" class="btn btn-ghost btn-sm desktop-only">Log out</a>
+      <button class="mobile-menu-btn" id="hamburger" onclick="toggleMenu()" aria-label="Menu">
+        <svg id="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        <svg id="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    {% endif %}
+  </div>
+</header>
+
+{% if request.user.is_authenticated and request.user.is_staff %}
+<div class="mobile-dropdown" id="mobile-menu">
+  <div class="mobile-menu-user">
+    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1a1000;flex-shrink:0;">{{ request.user.username|slice:":2"|upper }}</div>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--text);">{{ request.user.username }}</div>
+      <div style="font-size:11px;color:var(--text-faint);">Administrator</div>
+    </div>
+  </div>
+  <div class="mobile-menu-divider"></div>
+  <a href="{% url 'admin_dashboard' %}" class="mobile-menu-link" onclick="closeMenu()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    Dashboard
+  </a>
+  <a href="{% url 'create_class' %}?type=instant" class="mobile-menu-link" onclick="closeMenu()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+    Start instant class
+  </a>
+  <a href="{% url 'create_class' %}" class="mobile-menu-link" onclick="closeMenu()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+    Schedule class
+  </a>
+  <a href="{% url 'admin_settings' %}" class="mobile-menu-link" onclick="closeMenu()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    Settings
+  </a>
+  <div class="mobile-menu-divider"></div>
+  <a href="{% url 'admin_logout' %}" class="mobile-menu-link" style="color:var(--danger);">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;color:var(--danger);"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+    Log out
+  </a>
+</div>
+{% endif %}
+
+<div>
+  {% if messages %}
+    <ul class="messages" style="max-width:860px;margin:12px auto;padding:0 16px;">
+      {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% block content %}{% endblock %}
+</div>
+
+<footer class="gradient-footer">
+  <div class="footer-brand">
+    {% if site_settings and site_settings.logo %}
+      <img src="{{ site_settings.logo.url }}" alt="Logo" style="height:22px;width:auto;border-radius:4px;">
+    {% endif %}
+    <span class="logo-text" style="font-size:14px;">{% if site_settings and site_settings.site_title != 'Harpioz' %}{{ site_settings.site_title }}{% else %}Harp<span style="color:var(--accent);">ioz</span>{% endif %}</span>
+  </div>
+  <div class="footer-links">
+    <a href="{% url 'privacy' %}">Privacy Policy</a>
+    <a href="{% url 'terms' %}">Terms &amp; Conditions</a>
+  </div>
+  <div class="footer-copy">© 2026 Harpioz · All rights reserved · For educational use only</div>
+</footer>
+
+{% block extra_js %}{% endblock %}
+
+<script>
+// Live clock
+function updateClock() {
+  var now = new Date();
+  var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  var timeStr = (h < 10 ? '0'+h : h) + ':' + (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s) + ' ' + ampm;
+  var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var dateStr = String(now.getDate()).padStart(2,'0') + ' ' + months[now.getMonth()] + ' ' + now.getFullYear() + ' · ' + days[now.getDay()];
+  var tc = document.getElementById('clock-time');
+  var dc = document.getElementById('clock-date');
+  if (tc) tc.textContent = timeStr;
+  if (dc) dc.textContent = dateStr;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Mobile menu
+function toggleMenu() {
+  var menu = document.getElementById('mobile-menu');
+  var mi = document.getElementById('menu-icon');
+  var ci = document.getElementById('close-icon');
+  var open = menu.classList.toggle('open');
+  if (mi) { mi.style.display = open ? 'none' : 'block'; }
+  if (ci) { ci.style.display = open ? 'block' : 'none'; }
+}
+function closeMenu() {
+  var menu = document.getElementById('mobile-menu');
+  if (menu) {
+    menu.classList.remove('open');
+    var mi = document.getElementById('menu-icon');
+    var ci = document.getElementById('close-icon');
+    if (mi) mi.style.display = 'block';
+    if (ci) ci.style.display = 'none';
+  }
+}
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('mobile-menu');
+  var btn = document.getElementById('hamburger');
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) closeMenu();
+});
+</script>
+</body>
+</html>
