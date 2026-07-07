@@ -132,6 +132,7 @@ async function sendChat() {
 
 let viewerActive = true;
 let stallTimer = null;
+let retryTimer = null;
 let currentWhepUrl = '{{ whep_url|default:"" }}';
 
 async function getLatestWhepUrl() {
@@ -142,17 +143,32 @@ async function getLatestWhepUrl() {
   } catch(e) {}
 }
 
-async function startViewing() {
-  if (!viewerActive) return;
-
-  // Always fetch latest stream key before connecting (handles re-broadcast)
-  await getLatestWhepUrl();
-  if (!currentWhepUrl) { setTimeout(startViewing, 3000); return; }
-
+function scheduleRetry(delay) {
+  if (retryTimer) clearTimeout(retryTimer);
+  if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+  // Close existing PC
   if (pc) { try { pc.close(); } catch(e) {} pc = null; }
+  // Hide video, show waiting
+  const vid = document.getElementById('live-video');
+  const wm = document.getElementById('waiting-msg');
+  if (vid) { vid.srcObject = null; vid.style.display = 'none'; }
+  if (wm) wm.style.display = 'flex';
+  retryTimer = setTimeout(startViewing, delay);
+}
+
+async function startViewing() {
+  retryTimer = null;
+  if (!viewerActive) return;
 
   const vid = document.getElementById('live-video');
   const wm = document.getElementById('waiting-msg');
+
+  // Always get the latest stream URL (handles re-broadcast with new stream key)
+  await getLatestWhepUrl();
+  if (!currentWhepUrl) { scheduleRetry(3000); return; }
+
+  // Close any existing connection
+  if (pc) { try { pc.close(); } catch(e) {} pc = null; }
 
   pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
   pc.addTransceiver('video', {direction:'recvonly'});
@@ -163,14 +179,25 @@ async function startViewing() {
       vid.srcObject = e.streams[0];
       vid.style.display = 'block';
       if (wm) wm.style.display = 'none';
-      startStallDetection(vid, wm);
+      // Watch for stall (source switch or broadcaster stops)
+      if (stallTimer) clearTimeout(stallTimer);
+      let lastTime = -1;
+      function checkStall() {
+        if (!pc) return;
+        if (vid.readyState >= 2 && !vid.paused) {
+          if (vid.currentTime === lastTime) { scheduleRetry(1500); return; }
+          lastTime = vid.currentTime;
+        }
+        stallTimer = setTimeout(checkStall, 2000);
+      }
+      stallTimer = setTimeout(checkStall, 5000);
     }
   };
 
   pc.onconnectionstatechange = () => {
-    const state = pc ? pc.connectionState : '';
-    if (state === 'failed' || state === 'closed') reconnect(vid, wm, 2000);
-    else if (state === 'disconnected') reconnect(vid, wm, 3000);
+    const s = pc ? pc.connectionState : '';
+    if (s === 'failed' || s === 'closed') scheduleRetry(2000);
+    else if (s === 'disconnected') scheduleRetry(3000);
   };
 
   try {
@@ -184,53 +211,18 @@ async function startViewing() {
     if (r.ok) {
       await pc.setRemoteDescription({type:'answer', sdp: await r.text()});
     } else {
-      if (pc) { pc.close(); pc = null; }
-      reconnect(vid, wm, 3000);
+      // Stream not live yet — retry
+      pc.close(); pc = null;
+      scheduleRetry(3000);
     }
   } catch(e) {
     if (pc) { pc.close(); pc = null; }
-    reconnect(vid, wm, 3000);
+    scheduleRetry(3000);
   }
-}
-
-function reconnect(vid, wm, delay) {
-  if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
-  if (pc) { try { pc.close(); } catch(e) {} pc = null; }
-  if (vid) vid.style.display = 'none';
-  if (wm) wm.style.display = 'flex';
-  setTimeout(startViewing, delay);
-}
-
-function startStallDetection(vid, wm) {
-  if (stallTimer) clearTimeout(stallTimer);
-  let lastTime = -1;
-  function check() {
-    if (!pc) return;
-    if (vid.readyState >= 2 && !vid.paused) {
-      if (vid.currentTime === lastTime) {
-        reconnect(vid, wm, 1000);
-        return;
-      }
-      lastTime = vid.currentTime;
-    }
-    stallTimer = setTimeout(check, 2000);
-  }
-  stallTimer = setTimeout(check, 4000);
 }
 
 {% if lc.chat_enabled %}pollChat();{% endif %}
-{% if streaming_enabled %}
-startViewing();
-
-// Every 5s, if video isn't playing, try reconnecting
-setInterval(function() {
-  const vid = document.getElementById('live-video');
-  const isPlaying = vid && vid.readyState >= 2 && !vid.paused && vid.currentTime > 0;
-  if (!isPlaying && !pc) {
-    startViewing();
-  }
-}, 5000);
-{% endif %}
+{% if streaming_enabled %}startViewing();{% endif %}
 </script>
 </body>
 </html>
